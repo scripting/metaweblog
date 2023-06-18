@@ -10,5 +10,7 @@ For easy reading, I am posting it to the repo as if it were JavaScript code.
 
 Lets see how that works! ;-)
 
+PS: I have found example server code from Manila and Radio but don't have in a form I can easily upload here. 
+
 //6/18/23 by DW
 
