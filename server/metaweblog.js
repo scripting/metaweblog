@@ -25,9 +25,32 @@ function readConfig (f, config, callback) {
 		});
 	}
 
-function newPost (iduser, idblog, jstruct, flpublish, callback) {
-	var idpost = utils.random (1, 1000);
-	callback (undefined, idpost);
+function newPost (username, blogid, struct, publish, callback) {
+	//Changes
+		//6/18/23; 12:43:04 PM by DW
+			//Here's how Radio created a new post. 
+				//http://listings.opml.org/verbs/builtins/radio/weblog/metaWeblogApi/rpcHandlers/newPost.html
+	var postid = utils.random (1, 1000);
+	callback (undefined, postid);
+	}
+function editPost (username, postid, struct, publish, callback) {
+	//Changes
+		//6/18/23; 12:43:04 PM by DW
+			//Here's how Radio eduts a post. 
+				//http://listings.opml.org/verbs/builtins/radio/weblog/metaWeblogApi/rpcHandlers/editPost.html
+	callback (undefined, true);
+	}
+function getPost (username, postid, callback) {
+	//Changes
+		//6/18/23; 12:43:04 PM by DW
+			//Here's how Radio gets a post. 
+				//http://listings.opml.org/verbs/builtins/radio/weblog/metaWeblogApi/rpcHandlers/getPost.html
+	const thePost = {
+		title: "This is a test",
+		link: "http://listings.opml.org/verbs/builtins/radio/weblog/metaWeblogApi/rpcHandlers/getPost.html",
+		description: "Nothing interesting to read here."
+		}
+	callback (undefined, thePost);
 	}
 
 readConfig ("config.json", config, function () {
@@ -84,13 +107,23 @@ readConfig ("config.json", config, function () {
 				returnPlainText (new Date ().toString ());
 				return (true);
 			case "/newpost": 
-				callWithUsername (function (idUser) {
-					newPost (iduser, params.blogid, params.struct, params.flpublish, httpReturn);
+				callWithUsername (function (username) {
+					newPost (username, params.blogid, params.struct, params.publish, httpReturn);
+					});
+				return (true);
+			case "/editpost": 
+				callWithUsername (function (username) {
+					editPost (username, params.postid, params.struct, params.publish, httpReturn);
+					});
+				return (true);
+			case "/getpost": 
+				callWithUsername (function (username) {
+					getPost (username, params.postid, httpReturn);
 					});
 				return (true);
 			default: 
 				theRequest.httpReturn (404, "text/plain", "Not found.");
-				break;
+				return (true);
 			}
 		});
 	});
