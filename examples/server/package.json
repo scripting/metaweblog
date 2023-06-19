@@ -1,0 +1,10 @@
+{
+	"name": "example",
+	"description": "Example implementation of a Metaweblog API server.",
+	"version": "0.4.0",
+	"main": "server.js",
+	"dependencies" : {
+		"daveutils": "*",
+		"davemetaweblog": "*"
+		}
+	}

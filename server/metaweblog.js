@@ -1,12 +1,12 @@
+const myProductName = "metaweblog", myVersion = "0.4.1"; 
+
+exports.start = start; 
+
 const fs = require ("fs");
 const utils = require ("daveutils");
 const davehttp = require ("davehttp");
+const xmlrpc = require ("davexmlrpc");
 
-var config = {
-	port: process.env.PORT || 1417,
-	flLogToConsole: true,
-	flAllowAccessFromAnywhere: true
-	};
 
 function readConfig (f, config, callback) {
 	fs.readFile (f, function (err, jsontext) {
@@ -25,106 +25,52 @@ function readConfig (f, config, callback) {
 		});
 	}
 
-function newPost (username, blogid, struct, publish, callback) {
-	//Changes
-		//6/18/23; 12:43:04 PM by DW
-			//Here's how Radio created a new post. 
-				//http://listings.opml.org/verbs/builtins/radio/weblog/metaWeblogApi/rpcHandlers/newPost.html
-	var postid = utils.random (1, 1000);
-	callback (undefined, postid);
-	}
-function editPost (username, postid, struct, publish, callback) {
-	//Changes
-		//6/18/23; 12:43:04 PM by DW
-			//Here's how Radio eduts a post. 
-				//http://listings.opml.org/verbs/builtins/radio/weblog/metaWeblogApi/rpcHandlers/editPost.html
-	callback (undefined, true);
-	}
-function getPost (username, postid, callback) {
-	//Changes
-		//6/18/23; 12:43:04 PM by DW
-			//Here's how Radio gets a post. 
-				//http://listings.opml.org/verbs/builtins/radio/weblog/metaWeblogApi/rpcHandlers/getPost.html
-	const thePost = {
-		title: "This is a test",
-		link: "http://listings.opml.org/verbs/builtins/radio/weblog/metaWeblogApi/rpcHandlers/getPost.html",
-		description: "Nothing interesting to read here."
+
+var config = {
+	port: process.env.PORT || 1417,
+	flPostEnabled: true,
+	xmlRpcPath: "/rpc2",
+	flLogToConsole: true,
+	flAllowAccessFromAnywhere: true,
+	metaweblog: {
+		newPost: function (blogid, username, password, struct, publish, callback) {
+			callback (undefined, "");
+			},
+		editPost: function (postid, username, password, struct, publish, callback) {
+			callback (undefined, true);
+			},
+		getPost: function (postid, username, password, callback) {
+			callback (undefined, new Object ());
+			}
 		}
-	callback (undefined, thePost);
+	};
+
+function handleXmlrpcRequest (theRequest) {
+	const params = theRequest.params;
+	switch (theRequest.verb) {
+		case "metaWeblog.newPost": 
+			config.metaweblog.newPost (params.blogid, params.username, params.password, params.struct, params.publish, theRequest.returnVal);
+			return (true);
+		case "metaWeblog.editPost": 
+			config.metaweblog.editPost (params.postid, params.username, params.password, params.struct, params.publish, theRequest.returnVal);
+			return (true);
+		case "metaWeblog.getPost": 
+			config.metaweblog.getPost (params.postid, params.username, params.password, theRequest.returnVal);
+			return (true);
+		//case "mail.send":
+			//mailSend (xmlRpcRequest.params, xmlRpcRequest.returnVal);
+			//return (true); //we handled it
+		}
+	return (false); //not handled
 	}
 
-readConfig ("config.json", config, function () {
-	console.log ("config == " + utils.jsonStringify (config));
-	davehttp.start (config, function (theRequest) {
-		const params = theRequest.params;
-		function returnPlainText (theString) {
-			if (theString === undefined) {
-				theString = "";
-				}
-			//console.log ("returnPlainText: theString == " + theString + ", typeof theString == " + typeof theString);
-			theRequest.httpReturn (200, "text/plain", theString);
+function start (options, callback) {
+	if (options !== undefined) {
+		for (var x in options) {
+			config [x] = options [x];
 			}
-		function returnData (jstruct) {
-			if (jstruct === undefined) {
-				jstruct = {};
-				}
-			theRequest.httpReturn (200, "application/json", utils.jsonStringify (jstruct));
-			}
-		function returnError (jstruct) {
-			theRequest.httpReturn (500, "application/json", utils.jsonStringify (jstruct));
-			}
-		function returnJsontext (jsontext) { 
-			theRequest.httpReturn (200, "application/json", jsontext.toString ());
-			}
-		function httpReturn (err, returnedValue) {
-			//Changes
-				//9/14/22; 3:47:35 PM by DW
-					//If the returned value is an object, call returnData, but if it's something else, return it as a string. 
-					//In all cases, the returned type is application/json.
-					//This allows the river routines to convert the object to jsontext so it can cache that instead of an object.
-			if (err) {
-				returnError (err);
-				}
-			else {
-				if (typeof returnedValue == "object") {
-					returnData (returnedValue);
-					}
-				else {
-					returnJsontext (returnedValue); //9/14/22 by DW
-					}
-				}
-			}
-		
-		function callWithUsername (callback) {
-			//Changes
-				//6/18/23; 12:30:23 PM by DW
-					//To start, all usernames and passwords are valid. ;-)
-			callback (1); 
-			}
-		
-		switch (theRequest.lowerpath) {
-			case "/now": 
-				returnPlainText (new Date ().toString ());
-				return (true);
-			case "/newpost": 
-				callWithUsername (function (username) {
-					newPost (username, params.blogid, params.struct, params.publish, httpReturn);
-					});
-				return (true);
-			case "/editpost": 
-				callWithUsername (function (username) {
-					editPost (username, params.postid, params.struct, params.publish, httpReturn);
-					});
-				return (true);
-			case "/getpost": 
-				callWithUsername (function (username) {
-					getPost (username, params.postid, httpReturn);
-					});
-				return (true);
-			default: 
-				theRequest.httpReturn (404, "text/plain", "Not found.");
-				return (true);
-			}
-		});
-	});
+		}
+	console.log ("metaweblog.start: config == " + utils.jsonStringify (config));
+	xmlrpc.startServerOverHttp (config, handleXmlrpcRequest);
+	}
 
